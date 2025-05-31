@@ -22,16 +22,27 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
 
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data } = await axios.post('http://localhost:5000/api/users/login', {
         email,
         password
       });
 
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('userId', data.user._id);
-      window.location.href = '/dashboard';
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', data._id);
+        window.location.href = '/dashboard';
+      } else {
+        setError('Invalid response from server');
+      }
     } catch (error: any) {
+      console.error('Login error:', error);
       setError(error.response?.data?.message || 'An error occurred. Please try again.');
     } finally {
       setLoading(false);

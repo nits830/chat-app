@@ -35,22 +35,34 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email }).select('+password');
-  if (user && (await user.matchPassword(password))) {
-    user.status = 'online';
-    await user.save();
+  if (!email || !password) {
+    res.status(400);
+    throw new Error('Please provide email and password');
+  }
 
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      profilePic: user.profilePic,
-      token: generateToken(user._id)
-    });
-  } else {
+  const user = await User.findOne({ email }).select('+password');
+  
+  if (!user) {
     res.status(401);
     throw new Error('Invalid email or password');
   }
+
+  const isMatch = await user.matchPassword(password);
+  if (!isMatch) {
+    res.status(401);
+    throw new Error('Invalid email or password');
+  }
+
+  user.status = 'online';
+  await user.save();
+
+  res.json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    profilePic: user.profilePic,
+    token: generateToken(user._id)
+  });
 });
 
 // @desc    Logout user

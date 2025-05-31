@@ -5,7 +5,9 @@ const connectDB = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 const userRoutes = require('./routes/userRoutes');
 const chatRoutes = require('./routes/chatRoutes');
-const initializeSocket = require('./config/socket');
+const messageRoutes = require('./routes/messages.js');
+const { initializeSocket } = require('./socket');
+const http = require('http');
 
 dotenv.config();
 
@@ -13,6 +15,10 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+initializeSocket(server);
 
 // CORS configuration
 app.use(cors({
@@ -28,6 +34,7 @@ app.use(express.json());
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/chats', chatRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Error Handling
 app.use(notFound);
@@ -35,12 +42,9 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-// Initialize Socket.IO
-const io = initializeSocket(server);
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {

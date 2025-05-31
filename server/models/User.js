@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
   },
   dateOfBirth: {
     type: Date,
-    required: [true, 'Please add date of birth']
+    required: false
   },
   profilePic: {
     type: String,
