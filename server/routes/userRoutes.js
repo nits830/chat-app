@@ -15,7 +15,10 @@ const {
   getBlockedUsers,
   searchUsers,
   getUserOnlineStatus,
-  getOnlineContacts
+  getOnlineContacts,
+  addFriend,
+  removeFriend,
+  getFriends
 } = require('../controllers/userController');
 
 // Auth Routes
@@ -43,6 +46,11 @@ router.get('/search', protect, searchUsers);
 // Online Status Routes
 router.get('/online-status/:userId', protect, getUserOnlineStatus);
 router.get('/online-contacts', protect, getOnlineContacts);
+
+// Friend management routes
+router.post('/friends/:userId', protect, addFriend);
+router.delete('/friends/:userId', protect, removeFriend);
+router.get('/friends', protect, getFriends);
 
 // Export routes
 module.exports = router; 

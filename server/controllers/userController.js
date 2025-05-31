@@ -35,8 +35,8 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
-  if (user && (await user.comparePassword(password))) {
+  const user = await User.findOne({ email }).select('+password');
+  if (user && (await user.matchPassword(password))) {
     user.status = 'online';
     await user.save();
 
@@ -213,6 +213,78 @@ const getOnlineContacts = asyncHandler(async (req, res) => {
   res.json(user.contacts);
 });
 
+// @desc    Add a friend
+// @route   POST /api/users/friends/:userId
+// @access  Private
+const addFriend = async (req, res) => {
+  try {
+    const friendId = req.params.userId;
+    const userId = req.user._id;
+
+    // Check if friend exists
+    const friend = await User.findById(friendId);
+    if (!friend) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if already friends
+    const user = await User.findById(userId);
+    if (user.friends.includes(friendId)) {
+      return res.status(400).json({ message: 'Already friends with this user' });
+    }
+
+    // Add friend to both users' friend lists
+    await User.findByIdAndUpdate(userId, {
+      $addToSet: { friends: friendId }
+    });
+
+    await User.findByIdAndUpdate(friendId, {
+      $addToSet: { friends: userId }
+    });
+
+    res.status(200).json({ message: 'Friend added successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error adding friend', error: error.message });
+  }
+};
+
+// @desc    Remove a friend
+// @route   DELETE /api/users/friends/:userId
+// @access  Private
+const removeFriend = async (req, res) => {
+  try {
+    const friendId = req.params.userId;
+    const userId = req.user._id;
+
+    // Remove friend from both users' friend lists
+    await User.findByIdAndUpdate(userId, {
+      $pull: { friends: friendId }
+    });
+
+    await User.findByIdAndUpdate(friendId, {
+      $pull: { friends: userId }
+    });
+
+    res.status(200).json({ message: 'Friend removed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error removing friend', error: error.message });
+  }
+};
+
+// @desc    Get user's friends
+// @route   GET /api/users/friends
+// @access  Private
+const getFriends = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .populate('friends', 'name email status lastSeen');
+
+    res.status(200).json(user.friends);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching friends', error: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -227,5 +299,8 @@ module.exports = {
   getBlockedUsers,
   searchUsers,
   getUserOnlineStatus,
-  getOnlineContacts
+  getOnlineContacts,
+  addFriend,
+  removeFriend,
+  getFriends
 }; 

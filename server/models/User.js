@@ -4,25 +4,29 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Name is required'],
+    required: [true, 'Please add a name'],
     trim: true
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
+    required: [true, 'Please add an email'],
     unique: true,
     trim: true,
     lowercase: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
-  },
-  dateOfBirth: {
-    type: Date,
-    required: [true, 'Date of birth is required']
+    match: [
+      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+      'Please add a valid email'
+    ]
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters long']
+    required: [true, 'Please add a password'],
+    minlength: [6, 'Password must be at least 6 characters'],
+    select: false
+  },
+  dateOfBirth: {
+    type: Date,
+    required: [true, 'Please add date of birth']
   },
   profilePic: {
     type: String,
@@ -30,7 +34,7 @@ const userSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['online', 'offline', 'away'],
+    enum: ['online', 'offline'],
     default: 'offline'
   },
   lastSeen: {
@@ -42,7 +46,7 @@ const userSchema = new mongoose.Schema({
     maxlength: 200,
     default: ''
   },
-  contacts: [{
+  friends: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
@@ -87,22 +91,19 @@ const userSchema = new mongoose.Schema({
   timestamps: true // Adds createdAt and updatedAt fields
 });
 
-// Hash password before saving
+// Encrypt password using bcrypt
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+  if (!this.isModified('password')) {
     next();
-  } catch (error) {
-    next(error);
   }
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Method to compare password
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+// Match user entered password to hashed password in database
+userSchema.methods.matchPassword = async function(enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
 };
 
 // Method to update last seen
