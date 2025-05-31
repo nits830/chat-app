@@ -2,7 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-const AddFriend = () => {
+interface AddFriendProps {
+  onFriendAdded?: () => void;
+}
+
+const AddFriend = ({ onFriendAdded }: AddFriendProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [message, setMessage] = useState({ text: '', type: '' });
@@ -64,6 +68,10 @@ const AddFriend = () => {
         setSearchResults([]);
         setSearchQuery('');
         setIsDropdownOpen(false);
+        // Trigger friend list refresh
+        if (onFriendAdded) {
+          onFriendAdded();
+        }
       } else {
         setMessage({ text: data.message, type: 'error' });
       }

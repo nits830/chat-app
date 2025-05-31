@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Navbar from './components/Navbar';
 import AddFriend from './components/AddFriend';
 
@@ -6,13 +9,19 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleFriendAdded = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <AddFriend />
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <AddFriend onFriendAdded={handleFriendAdded} />
+      <div key={refreshKey}>
         {children}
-      </main>
+      </div>
     </div>
   );
 } 

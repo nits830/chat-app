@@ -23,16 +23,6 @@ const FriendList = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchFriends();
-  }, []);
-
-  useEffect(() => {
-    if (selectedFriend) {
-      fetchMessages(selectedFriend._id);
-    }
-  }, [selectedFriend]);
-
   const fetchFriends = async () => {
     try {
       const response = await fetch('http://localhost:5000/api/users/friends', {
@@ -50,6 +40,16 @@ const FriendList = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchFriends();
+  }, []);
+
+  useEffect(() => {
+    if (selectedFriend) {
+      fetchMessages(selectedFriend._id);
+    }
+  }, [selectedFriend]);
 
   const fetchMessages = async (friendId: string) => {
     try {
@@ -123,7 +123,6 @@ const FriendList = () => {
                   }`}
                 >
                   <p className="font-medium">{friend.name}</p>
-                  <p className="text-sm text-gray-500">{friend.email}</p>
                 </div>
               ))}
             </div>
@@ -138,7 +137,6 @@ const FriendList = () => {
             {/* Chat Header */}
             <div className="p-4 border-b border-gray-200">
               <h3 className="font-semibold">{selectedFriend.name}</h3>
-              <p className="text-sm text-gray-500">{selectedFriend.email}</p>
             </div>
 
             {/* Messages */}
