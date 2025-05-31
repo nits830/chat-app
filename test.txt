@@ -1,0 +1,6 @@
+{
+    "_id": "683acc714896cdd655ac0496",
+    "name": "Test User 1",
+    "email": "test1@example.com",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4M2FjYzcxNDg5NmNkZDY1NWFjMDQ5NiIsImlhdCI6MTc0ODY4Mzg4OSwiZXhwIjoxNzUxMjc1ODg5fQ.JEZylZVSq600ycEo5ablL5SnY9gvXdt6SITckYpYbzM"
+}

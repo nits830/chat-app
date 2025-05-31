@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .section {
+            flex: 1;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .sent {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+        }
+        .received {
+            background-color: #f5f5f5;
+            margin-right: 20%;
+        }
+        .status {
+            color: #666;
+            font-style: italic;
+        }
+        .typing {
+            color: #666;
+            font-style: italic;
+        }
+        #messageList {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        input, button {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        button {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat Test</h1>
+    <div class="container">
+        <div class="section">
+            <h2>Login</h2>
+            <input type="text" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <div id="loginStatus"></div>
+        </div>
+        <div class="section">
+            <h2>Create Chat</h2>
+            <input type="text" id="participantId" placeholder="Participant ID">
+            <button onclick="createChat()">Create Chat</button>
+            <div id="chatStatus"></div>
+        </div>
+    </div>
+    <div class="section">
+        <h2>Messages</h2>
+        <div id="messageList"></div>
+        <input type="text" id="messageInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()">Send</button>
+        <div id="typingStatus"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        let socket;
+        let token;
+        let currentChatId;
+        let currentUserId;
+        let typingTimeout;
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('http://localhost:5000/api/users/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    token = data.token;
+                    currentUserId = data._id;
+                    document.getElementById('loginStatus').textContent = 'Logged in successfully!';
+                    
+                    // Initialize socket connection
+                    initializeSocket();
+                } else {
+                    document.getElementById('loginStatus').textContent = `Login failed: ${data.message}`;
+                }
+            } catch (error) {
+                document.getElementById('loginStatus').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function initializeSocket() {
+            // Close existing socket if any
+            if (socket) {
+                socket.disconnect();
+            }
+
+            // Initialize new socket connection
+            socket = io('http://localhost:5000', {
+                auth: {
+                    token: token
+                }
+            });
+
+            // Socket event listeners
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                document.getElementById('chatStatus').textContent = 'Connected to server';
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from server');
+                document.getElementById('chatStatus').textContent = 'Disconnected from server';
+            });
+
+            socket.on('message received', (message) => {
+                console.log('Message received:', message);
+                addMessage(message, false);
+            });
+
+            socket.on('typing', (userId) => {
+                document.getElementById('typingStatus').textContent = 'Someone is typing...';
+            });
+
+            socket.on('stop typing', () => {
+                document.getElementById('typingStatus').textContent = '';
+            });
+
+            socket.on('user online', (userId) => {
+                addStatusMessage(`User ${userId} is online`);
+            });
+
+            socket.on('user offline', (userId) => {
+                addStatusMessage(`User ${userId} is offline`);
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                document.getElementById('chatStatus').textContent = `Connection error: ${error.message}`;
+            });
+        }
+
+        async function createChat() {
+            const participantId = document.getElementById('participantId').value;
+            if (!participantId) {
+                document.getElementById('chatStatus').textContent = 'Please enter a participant ID';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/chats', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        participants: [participantId]
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    currentChatId = data._id;
+                    document.getElementById('chatStatus').textContent = 'Chat created successfully!';
+                    
+                    // Join the chat room
+                    socket.emit('join chat', currentChatId);
+                } else {
+                    document.getElementById('chatStatus').textContent = `Failed to create chat: ${data.message}`;
+                }
+            } catch (error) {
+                document.getElementById('chatStatus').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message || !currentChatId) {
+                return;
+            }
+
+            const messageData = {
+                chat: currentChatId,
+                content: message,
+                type: 'text'
+            };
+
+            // Emit the message
+            socket.emit('new message', messageData);
+            
+            // Add message to UI
+            addMessage({
+                ...messageData,
+                sender: {
+                    _id: currentUserId
+                }
+            }, true);
+
+            // Clear input
+            messageInput.value = '';
+        }
+
+        function addMessage(message, isSent) {
+            const messageList = document.getElementById('messageList');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+            messageDiv.textContent = message.content;
+            messageList.appendChild(messageDiv);
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+        function addStatusMessage(message) {
+            const messageList = document.getElementById('messageList');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'status';
+            messageDiv.textContent = message;
+            messageList.appendChild(messageDiv);
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            } else {
+                // Handle typing indicator
+                if (currentChatId) {
+                    socket.emit('typing', currentChatId);
+                    clearTimeout(typingTimeout);
+                    typingTimeout = setTimeout(() => {
+                        socket.emit('stop typing', currentChatId);
+                    }, 1000);
+                }
+            }
+        }
+    </script>
+</body>
+</html> 
