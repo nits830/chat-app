@@ -1,30 +1,36 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import FriendList from './components/FriendList';
 
-export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null);
+const DashboardPage = () => {
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (!userData) {
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+
+    if (!token) {
       window.location.href = '/login';
       return;
     }
-    setUser(JSON.parse(userData));
+
+    setLoading(false);
   }, []);
 
-  if (!user) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      
+      <FriendList />
     </div>
   );
-}
+};
+
+export default DashboardPage;
